@@ -2,11 +2,16 @@ name: Build Docker images
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
 permissions:
   contents: read
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
   docker-cm:
@@ -23,18 +28,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-      - name: Login to Docker Hub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
-          images: ctferio/chall-manager
-      
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/chall-manager
+          tags: |
+            type=sha,prefix=
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Git commit date
         id: infos
         run: |
@@ -52,7 +63,7 @@ jobs:
         id: build
         with:
           push: true
-          sbom: true # may not produce SBOM in manifest if the image has no filesystem (e.g. "FROM scratch")
+          sbom: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: Dockerfile.chall-manager
@@ -72,13 +83,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
-      image: ctferio/chall-manager
+      image: ghcr.io/${{ github.repository_owner }}/chall-manager
       digest: ${{ needs.docker-cm.outputs.digest }}
+      registry-username: ${{ github.actor }}
     secrets:
-      registry-username: ${{ secrets.DOCKERHUB_USERNAME }}
-      registry-password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
 
   docker-cmj:
     runs-on: ubuntu-latest
@@ -94,18 +103,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-      - name: Login to Docker Hub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
-          images: ctferio/chall-manager-janitor
-      
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/chall-manager-janitor
+          tags: |
+            type=sha,prefix=
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Git commit date
         id: infos
         run: |
@@ -123,7 +138,7 @@ jobs:
         id: build
         with:
           push: true
-          sbom: true # may not produce SBOM in manifest if the image has no filesystem (e.g. "FROM scratch")
+          sbom: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: Dockerfile.chall-manager-janitor
@@ -143,8 +158,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
-      image: ctferio/chall-manager-janitor
+      image: ghcr.io/${{ github.repository_owner }}/chall-manager-janitor
       digest: ${{ needs.docker-cmj.outputs.digest }}
+      registry-username: ${{ github.actor }}
     secrets:
-      registry-username: ${{ secrets.DOCKERHUB_USERNAME }}
-      registry-password: ${{ secrets.DOCKERHUB_TOKEN }}
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
