@@ -392,7 +392,9 @@ func (man *Manager) CreateInstance(ctx context.Context, req *CreateInstanceReque
 		return nil, errs.ErrInternalNoSub
 	}
 
-	logger.Info(ctx, "instance created successfully")
+	logger.Info(ctx, "instance created successfully",
+		zap.Strings("flags", fsist.Flags),
+	)
 	common.InstancesUDCounter().Add(ctx, 1,
 		metric.WithAttributeSet(common.InstanceAttrs(req.ChallengeId, req.SourceId, false)),
 	)
